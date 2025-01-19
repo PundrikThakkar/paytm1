@@ -1,10 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const zod = require("zod");
+const bcrypt = require("bcrypt");
 const { User, Account } = require("../db");
 const jwt = require("jsonwebtoken");
 const { JWT_SECRET } = require("../config");
-
 const { authMiddleware } = require("../middleware");
 
 const signupBody = zod.object({
@@ -26,7 +26,7 @@ router.post("/signup", async (req, res) => {
 
   if (existingUser) {
     return res.status(411).json({
-      message: "Emaill already taken/Incorrect inputs",
+      message: "Email already taken/Incorrect inputs",
     });
   }
   const user = await User.create({
@@ -64,12 +64,9 @@ router.post("/signin", async (req, res) => {
     });
   }
 
-  const user = await User.findOne({
-    username: req.body.username,
-    password: req.body.password,
-  });
+  const user = await User.findOne({ username: req.body.username });
 
-  if (user) {
+  if (user && (await bcrypt.compare(req.body.password, user.password))) {
     const token = jwt.sign({ userId: user._id }, JWT_SECRET);
     res.json({
       token: token,
@@ -78,7 +75,7 @@ router.post("/signin", async (req, res) => {
     return;
   }
 
-  res.status(411).json({ message: "Error while loggin in" });
+  res.status(411).json({ message: "Error while logging in" });
 });
 
 const updateBody = zod.object({
